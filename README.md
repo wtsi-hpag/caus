@@ -21,8 +21,8 @@ Download and Compile:
 
 Requirements for compiling: gcc
 
-	$ git clone https://github.com/SangerHpag/scanPAV.git
-	$ cd scanPAV 
+	$ git clone https://github.com/SangerHpag/caus.git
+	$ cd caus
 	$ make 
 
 Please contact Zemin Ning ( zn1@sanger.ac.uk ) for any further information. 
