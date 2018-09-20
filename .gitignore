@@ -6,7 +6,6 @@ caus-bin/caus_seqout
 caus-bin/caus_shred
 caus-bin/caus_smalt1
 caus-bin/caus_smalt2
-caus-bin/caus_smalt3
 caus.o
 caus_assign
 caus_assign.o
@@ -20,7 +19,5 @@ caus_smalt1
 caus_smalt1.o
 caus_smalt2
 caus_smalt2.o
-caus_smalt3
-caus_smalt3.o
 fast.o
 
