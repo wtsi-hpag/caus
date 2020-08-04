@@ -64,7 +64,7 @@ static int len_matrx=2000;
 static int min_edge = 5;
 static int uplinks = 50;
 static int run_align = 1;
-static int min_len = 3000;
+static int min_len = 100000;
 
 typedef struct
 {
@@ -123,6 +123,11 @@ int main(int argc, char **argv)
        else if(!strcmp(argv[i],"-debug"))
        {
          sscanf(argv[++i],"%d",&n_debug);
+         args=args+2;
+       }
+       else if(!strcmp(argv[i],"-len"))
+       {
+         sscanf(argv[++i],"%d",&min_len);
          args=args+2;
        }
        else if(!strcmp(argv[i],"-nodes"))
@@ -185,7 +190,7 @@ int main(int argc, char **argv)
     }
 
     memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_fasta -name reference -len 10 %s reference.fasta reference.tag > try.out",bindir,file_reference);
+    sprintf(syscmd,"%s/caus_fasta -name reference -len %d %s reference.fasta reference.tag > try.out",bindir,min_len,file_reference);
     if(system(syscmd) == -1)
     {
 //      printf("System command error:\n);
