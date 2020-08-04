@@ -21,7 +21,7 @@ Download and Compile:
 
 Requirements for compiling: gcc
 
-	$ git clone https://github.com/SangerHpag/caus.git
+	$ git clone https://github.com/wtsi-hpag/caus.git
 	$ cd caus
 	$ make 
 
