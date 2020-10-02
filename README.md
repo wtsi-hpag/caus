@@ -9,7 +9,7 @@ You want to assign scaffolds in target.fasta to the reference assembly reference
 
 You run
 
-        /tmp/casu/caus arget.fasta reference.fasta assign.fasta > try.out
+        /tmp/casu/caus target.fasta reference.fasta assign.fasta > try.out
 
 This gives you the assigned assembly file: assign.fasta 
 
