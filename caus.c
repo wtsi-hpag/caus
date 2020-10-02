@@ -203,25 +203,47 @@ int main(int argc, char **argv)
 //      printf("System command error:\n);
     }
 
+/*
+
+    memset(syscmd,'\0',2000);
+    sprintf(syscmd,"%s/smalt index -k 13 -s 6 hash_reference reference.fasta > try.out",bindir);
+    if(system(syscmd) == -1)
+    {
+    printf("System command error:\n);
+    }
+
+    sprintf(syscmd,"%s/smalt map -f ssaha -m %d -n %d -o align.dat -O hash_reference input.shred > try.out",bindir,n_score,n_nodes);
+                          */
     memset(syscmd,'\0',2000);
     sprintf(syscmd,"%s/minimap2 -x map10k reference.fasta input.shred > align.paf",bindir);
-//    sprintf(syscmd,"%s/smalt map -f ssaha -m %d -n %d -o align.dat -O hash_reference input.shred > try.out",bindir,n_score,n_nodes);
     if(system(syscmd) == -1)
     {
 //    printf("System command error:\n);
     }
 
     memset(syscmd,'\0',2000);
-    sprintf(syscmd,"cat align.paf | awk '%s' > align.dat","($12>=5){print $12,$11,$1,$6,$3,$4,$8,$9,$5,$2,99.90,$2,$7}");
-//    sprintf(syscmd,"egrep :S: align.dat > align.clean");
-      printf("System command: %s\n",syscmd);
+    sprintf(syscmd,"egrep s2:i align.paf | awk '%s' > align.dat","($12>=5){print $12,$11,$1,$6,$3,$4,$8,$9,$5,$2,99.90,$2,$7}");
     if(system(syscmd) == -1)
     {
 //      printf("System command error:\n);
     }
 
     memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_smalt1 align.dat align.clean1 > try.out",bindir);
+    sprintf(syscmd,"sort -k 3,3 -k 2,2n align.dat > align.dat0");
+    if(system(syscmd) == -1)
+    {
+//      printf("System command error:\n);
+    }
+    
+    memset(syscmd,'\0',2000);
+    sprintf(syscmd,"%s/caus_smalt0 align.dat0 align.dat1 > try.out",bindir);
+    if(system(syscmd) == -1)
+    {
+//      printf("System command error:\n);
+    }
+    
+    memset(syscmd,'\0',2000);
+    sprintf(syscmd,"%s/caus_smalt1 align.dat1 align.clean1 > try.out",bindir);
     if(system(syscmd) == -1)
     {
 //      printf("System command error:\n);
@@ -235,7 +257,14 @@ int main(int argc, char **argv)
     }
 
     memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_smalt3 align.clean2 align.match > try.out",bindir);
+    sprintf(syscmd,"egrep reference align.clean2 > align.clean3");
+    if(system(syscmd) == -1)
+    {
+//      printf("System command error:\n);
+    }
+
+    memset(syscmd,'\0',2000);
+    sprintf(syscmd,"%s/caus_smalt3 align.clean3 align.match > try.out",bindir);
     if(system(syscmd) == -1)
     {
 //      printf("System command error:\n);
