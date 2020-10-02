@@ -50,6 +50,7 @@ static int *ctg_index,*ctg_mask;
 static int *ctg_rcdex,*ctg_list,*ctg_head;
 static int *ctg_sfdex,*ctg_length,*chr_length;
 static int IMOD = 10;
+static int gap_size = 500;
 static int insert_flag =1;
 static B64_long *cigar_head,sBase;
 static char **chrname;
@@ -250,63 +251,66 @@ int main(int argc, char **argv)
        char *dpp;
        seqp = seq + ctg_index[ctg_head[i]];
        seq_len = 0;
-       fprintf(fpOutfast,"@synteny-group_%d\n",n_scaff);
-//       printf("@%s\n",seqp->name);
-       for(j=0;j<ctg_list[i];j++)
+       if(ctg_list[i] > 0)
        {
-          int idd = ctg_head[i]+j;
-          seqp = seq + ctg_index[idd];
-          seq_st = 0;
-          seq_ed = seqp->length;
-          if(ctg_rcdex[idd] == 0)
-          {
-            for(rc=seq_st;rc<seq_ed;rc++)
-               fprintf(fpOutfast,"%c",seqp->data[rc]);
-          }
-          else
-          {
-            dpp = seqp->data + seq_ed-1;
+         fprintf(fpOutfast,"@synteny-group_%d\n",n_scaff);
+//         printf("%s %d %d\n",seqp->name,n_scaff,ctg_list[i]);
+         for(j=0;j<ctg_list[i];j++)
+         {
+            int idd = ctg_head[i]+j;
+            seqp = seq + ctg_index[idd];
+            seq_st = 0;
+            seq_ed = seqp->length;
+            if(ctg_rcdex[idd] == 0)
+            {
+              for(rc=seq_st;rc<seq_ed;rc++)
+                 fprintf(fpOutfast,"%c",seqp->data[rc]);
+            }
+            else
+            {
+              dpp = seqp->data + seq_ed-1;
+              for(rc=0;rc<seq_ed;rc++)
+               {
+                  if(*dpp == 'A') fprintf(fpOutfast,"%c",'T');
+                  else if(*dpp == 'C') fprintf(fpOutfast,"%c",'G');
+                  else if(*dpp == 'G') fprintf(fpOutfast,"%c",'C');
+                  else if(*dpp == 'T') fprintf(fpOutfast,"%c",'A');
+                  else                 fprintf(fpOutfast,"%c",*dpp);
+                  dpp--;
+               }
+            }
+            if(j<(ctg_list[i]-1))
+            {
+              for(rc=0;rc<gap_size;rc++)
+                 fprintf(fpOutfast,"%c",'N');
+            }
+         }
+         fprintf(fpOutfast,"\n");
+         fprintf(fpOutfast,"+\n");
+         for(j=0;j<ctg_list[i];j++)
+         {
+            int idd = ctg_head[i]+j;
+             seqp = seq + ctg_index[idd];
+            seq_st = 0;
+            seq_ed = seqp->length;
+            seq_len = seq_len + seqp->length;
             for(rc=0;rc<seq_ed;rc++)
-             {
-                if(*dpp == 'A') fprintf(fpOutfast,"%c",'T');
-                else if(*dpp == 'C') fprintf(fpOutfast,"%c",'G');
-                else if(*dpp == 'G') fprintf(fpOutfast,"%c",'C');
-                else if(*dpp == 'T') fprintf(fpOutfast,"%c",'A');
-                else                 fprintf(fpOutfast,"%c",*dpp);
-                dpp--;
-             }
-          }
-          if(j<(ctg_list[i]-1))
-          {
-            for(rc=0;rc<100;rc++)
-               fprintf(fpOutfast,"%c",'N');
-          }
-       }
-       fprintf(fpOutfast,"\n");
-       fprintf(fpOutfast,"+\n");
-       for(j=0;j<ctg_list[i];j++)
-       {
-          int idd = ctg_head[i]+j;
-          seqp = seq + ctg_index[idd];
-          seq_st = 0;
-          seq_ed = seqp->length;
-          seq_len = seq_len + seqp->length;
-          for(rc=0;rc<seq_ed;rc++)
-             putc(40+041,fpOutfast);
-          if(j<(ctg_list[i]-1))
-          {
-            for(rc=0;rc<100;rc++)
-               putc(0+041,fpOutfast); 
-          }
-       }
-       fprintf(fpOutfast,"\n");
+               putc(40+041,fpOutfast);
+            if(j<(ctg_list[i]-1))
+            {
+              for(rc=0;rc<gap_size;rc++)
+                 putc(0+041,fpOutfast); 
+            }
+         }
+         fprintf(fpOutfast,"\n");
 //       if(ctg_list[i]>0)
-       {
-         seq_placed = seq_placed+seq_len;
-         n_place = n_place + ctg_list[i];
-         fprintf(namef,"Assigned %s %d %d %d\n",chrname[i],chr_length[i],ctg_list[i],seq_len);
+         {
+           seq_placed = seq_placed+seq_len;
+           n_place = n_place + ctg_list[i];
+           fprintf(namef,"Assigned %s %d %d %d\n",chrname[i],chr_length[i],ctg_list[i],seq_len);
+         }
+         n_scaff++;
        }
-       n_scaff++;
     }
 
     n_scaff = 0;
