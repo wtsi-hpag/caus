@@ -43,11 +43,10 @@
 #define MAX_N_ROW 50000 
 #define Max_N_NameBase 60
 #define Max_N_Pair 100
-static char **S_Name,**R_Name,**R_Name2,**T_Name,**cellname;
-static int *insert,*hit_mask,*hit_rcdex,*hit_locus1,*hit_locus2,*readlength,*superlength;
-static int *pair_score,*pair_loend,*pair_insert,*pair_insert2;
-static int *hit_read1,*hit_read2,*PairIndex,*PairIndex1,*hit_length,*cell2tag,*refs2tag;
-static int *indel2read,*indel2copy,*indel2ctgs,*insert_size;
+static char **S_Name,**R_Name,**R_Name2,**C_Name,**cellname;
+static int *hit_mask2,*hit_mask,*hit_rcdex,*hit_locus1,*hit_locus2,*readlength,*superlength;
+static int *hit_cutlocus,*pair_loend;
+static int *hit_read1,*hit_read2,*hit_length;
 static float *hit_identy;
 
 /* SSAS default parameters   */
@@ -130,7 +129,7 @@ int main(int argc, char **argv)
     void Readname_match(fasta *seq,char **argv,int args,int nSeq,int nRead);
     void Indel_Process(char **argv,int args,int nSeq);
     void Memory_Allocate(int arr);
-    char *st,*ed,line[2000]={0},tempc1[60],RC[10];
+    char line[2000]={0},tempc1[60],RC[3];
     char **cmatrix(long nrl,long nrh,long ncl,long nch);
     void Read_Pairs(char **argv,int args,fasta *seq,int nSeq);
 
@@ -199,7 +198,7 @@ int main(int argc, char **argv)
       nseq++;
     }
     fclose(namef); 
-
+   
 /*
     nRead=0;
     if((namef = fopen(argv[args+1],"r")) == NULL)
@@ -220,6 +219,11 @@ int main(int argc, char **argv)
       printf("fmate: calloc - hit_score\n");
       exit(1);
     }
+    if((hit_mask2 = (int *)calloc(nseq,sizeof(int))) == NULL)
+    {
+      printf("fmate: calloc - hit_mask2\n");
+      exit(1);
+    }
     if((hit_rcdex = (int *)calloc(nseq,sizeof(int))) == NULL)
     {
       printf("fmate: calloc - hit_rcdex\n");
@@ -228,6 +232,11 @@ int main(int argc, char **argv)
     if((hit_read1 = (int *)calloc(nseq,sizeof(int))) == NULL)
     {
       printf("fmate: calloc - hit_read1\n");
+      exit(1);
+    }
+    if((hit_read2 = (int *)calloc(nseq,sizeof(int))) == NULL)
+    {
+      printf("fmate: calloc - hit_read2\n");
       exit(1);
     }
     if((hit_locus1 = (int *)calloc(nseq,sizeof(int))) == NULL)
@@ -240,16 +249,40 @@ int main(int argc, char **argv)
       printf("fmate: calloc - hit_locus2\n");
       exit(1);
     }
+    if((hit_length = (int *)calloc(nseq,sizeof(int))) == NULL)
+    {
+      printf("fmate: calloc - hit_length\n");
+      exit(1);
+    }
+    if((readlength = (int *)calloc(nseq,sizeof(int))) == NULL)
+    {
+      printf("fmate: calloc - readlength\n");
+      exit(1);
+    }
+    if((superlength = (int *)calloc(nseq,sizeof(int))) == NULL)
+    {
+      printf("fmate: calloc - superlength\n");
+      exit(1);
+    }
+    if((hit_cutlocus = (int *)calloc(nseq,sizeof(int))) == NULL)
+    {
+      printf("fmate: calloc - hit_cutlocus\n");
+      exit(1);
+    }
+    if((hit_identy = (float *)calloc(nseq,sizeof(float))) == NULL)
+    {
+      printf("fmate: calloc - hit_identy\n");
+      exit(1);
+    }
 
     nSeq=nseq;
     R_Name=cmatrix(0,nseq+10,0,Max_N_NameBase);
     S_Name=cmatrix(0,nseq+10,0,Max_N_NameBase);
-    T_Name=cmatrix(0,nseq+10,0,6);
+    C_Name=cmatrix(0,nseq+10,0,3);
     n_readsMaxctg=0;
     n_contig=0;
     n_reads=0;
 
-    printf("reads: %d %s\n",nseq,argv[args]);
     if((namef = fopen(argv[args],"r")) == NULL)
     {
       printf("ERROR main:: reads group file \n");
@@ -257,20 +290,18 @@ int main(int argc, char **argv)
     }
 
 /*  read the alignment files         */
+    printf("www: %d %s\n",nseq,argv[args]);
     i=0;
-//    while(fscanf(namef,"%s %s %s %s %d %d %d %d %s %d %f %d %d",tempc1,tempc1,R_Name[i],S_Name[i],&hit_read1[i],&hit_read2[i],&hit_locus1[i],&hit_locus2[i],RC,&hit_length[i],&hit_identy[i],&readlength[i],&superlength[i])!=EOF)
-    while(fscanf(namef,"%s %s %d %s %s %s %d %d %s %s %s %s %s",tempc1,R_Name[i],&hit_read1[i],S_Name[i],tempc1,tempc1,&hit_locus1[i],&hit_locus2[i],RC,tempc1,tempc1,tempc1,tempc1)!=EOF)
+    while(fscanf(namef,"%s %s %d %s %d %d %d %d %s %d %f %d %d",tempc1,R_Name[i],&hit_cutlocus[i],S_Name[i],&hit_read1[i],&hit_read2[i],&hit_locus1[i],&hit_locus2[i],C_Name[i],&hit_length[i],&hit_identy[i],&readlength[i],&superlength[i])!=EOF)
     {
-        if(RC[0] == 'F')
+        if(C_Name[i][0] == 'F')
           hit_rcdex[i]=0;
         else
 	{
-          int hit1 = hit_locus1[i];
-	  int hit2 = hit_locus2[i];
           hit_rcdex[i]=1;
 	}
-	hit_mask[i] = 0;
-	strncpy(T_Name[i],S_Name[i],4);
+	hit_mask[i] = -1;
+	hit_mask2[i] = 0;
         i++;
     }
     fclose(namef);
@@ -281,27 +312,34 @@ int main(int argc, char **argv)
     Indel_Process(argv,args,n_reads);
 //    Read_Pairs(argv,args,seq,n_reads);
 
-    printf("Job finished for %d reads!\n",n_reads);
     nseq=0;
+    if((namef = fopen(argv[args],"r")) == NULL)
+    {
+      printf("ERROR main:: args \n");
+      exit(1);
+    }
     if((namef2 = fopen(argv[args+1],"w")) == NULL)
     {
       printf("ERROR main:: args \n");
       exit(1);
     }
-
-    for(i=0;i<n_reads;i++)
+    while(!feof(namef))
     {
-       int idt;
-       if(hit_mask[i] == 0)
-       {
-         ed = strrchr(S_Name[i],'_');
-         idt = atoi(ed+1);
-//         fprintf(namef2,"%s %d %d %d\n",R_Name[i],hit_read1[i],idt,hit_locus1[i]);
-         fprintf(namef2,"%s %d %d %d %d\n",R_Name[i],hit_read1[i],idt,hit_rcdex[i],hit_locus1[i]);
-       }
+      fgets(line,2000,namef);
+      if(feof(namef)) break;
+      if(hit_mask2[nseq] == 0)
+      {
+        if(hit_mask[nseq] == -1)
+          fprintf(namef2,"%s",line);
+        else
+          fprintf(namef2,"%s %s %d %s %d %d %d %d %s %d %f %d %d\n","ALIGNMENT",R_Name[nseq],hit_cutlocus[nseq],S_Name[nseq],hit_read1[nseq],hit_read2[nseq],hit_mask[nseq],hit_mask[nseq]+2000,C_Name[nseq],hit_length[nseq],hit_identy[nseq],readlength[nseq],superlength[nseq]);
+      }
+      nseq++;
     }
+    fclose(namef); 
     fclose(namef2); 
 
+    printf("Job finished for %d reads!\n",nSeq);
     return EXIT_SUCCESS;
 
 }
@@ -312,37 +350,28 @@ int main(int argc, char **argv)
 void Indel_Process(char **argv,int args,int nSeq)
 /* =============================== */
 {
-     int i,j,k,m,n;
-     int num_hits,num_hit1,num_hit2,rcdex;
-     int stopflag,*readIndex,*readIndex2;
-     int offset,*dex;
-     void ArraySort_Mix(int n, long *arr, int *brr);
+     int i,j,k,kk,t,r,m,n;
+     int num_hits,num_hit1,num_hit2,rcdex,num_blocks;
+     int stopflag,stopflag2,stopflag3,*readIndex,*readLocus,*hit_list,*hit_head;
+     int offset1,offset2,*dex,num_maxbl,num_index;
      char **DBname,tagname[Max_N_NameBase],*st,*ed,**ray;
      float rate;
      char **cmatrix(long nrl,long nrh,long ncl,long nch);
-     void ArraySort_String(int n,char **Pair_Name,int *brr);
+     void ArraySort_Int2(int n, int *arr, int *brr);
           
-     if((readIndex= (int *)calloc(nSeq,sizeof(int))) == NULL)
+     if((hit_list= (int *)calloc(nSeq,sizeof(int))) == NULL)
      {
        printf("ERROR Memory_Allocate: calloc - readIndex\n");
        exit(1);
      }
-     if((readIndex2= (int *)calloc(nSeq,sizeof(int))) == NULL)
+     if((hit_head= (int *)calloc(nSeq,sizeof(int))) == NULL)
      {
        printf("ERROR Memory_Allocate: calloc - readIndex\n");
        exit(1);
-     }
-     DBname=cmatrix(0,nSeq,0,Max_N_NameBase);
-     for(i=0;i<nSeq;i++)
-     {
-        strcpy(DBname[i],S_Name[i]);
-        readIndex[i] = i;
      }
      num_hits =0;
      k = 0;
-     offset = 0;
-    printf("www: %d reads!\n",nSeq);
-     for(i=0;i<nSeq;i++)
+     for(i=0;i<(nSeq-1);i++)
      {
         stopflag=0;
         j=i+1;
@@ -355,262 +384,118 @@ void Indel_Process(char **argv,int args,int nSeq)
           else
             stopflag=1;
         }
-        if((j-i)>=2) 
+        if((j-i)>=4) 
         {
-          int stopflag2 = 0;
-          int ctg_rcdex1 = 0;
-          int ctg_rcdex2 = 0;
-          int ctg_rcdex = 0;
-
+          num_hits = j-i;
 	  for(n=i;n<j;n++)
-	  {
-	     m = n+1;
-	     stopflag2 = 0;
+          {
+             m = n+1;
+             stopflag2 = 0;
              while((m<j)&&(stopflag2==0))
-	     {
-               if((strcmp(S_Name[n],S_Name[m])==0)&&(m<(j)))
+             {
+               if((strcmp(S_Name[m],S_Name[n])==0)&&(m<j))
                {
                  m++;
                }
                else
                  stopflag2=1;
-	     }
-             ctg_rcdex1 = 0;
-             ctg_rcdex2 = 0;
-             for(k=n;k<m;k++)
-             {
-                if(hit_rcdex[k] == 0)
-                  ctg_rcdex1++;
-                else
-                  ctg_rcdex2++;
              }
-             if(ctg_rcdex2 > ctg_rcdex1)
-               ctg_rcdex = 1;
-             else
-               ctg_rcdex = 0;
-
-	     if((m-n) == 1)
+	     num_blocks = 0;
+	     memset(hit_list,0,4*(j-i));
+//    printf("block0: %d %d %s\n",j-i,m-n,S_Name[n]);
+	     if((m-n) >=4)
              {
-               hit_mask[n] = 1;
+	       for(r=n;r<m;r++)
+	       {	       
+	          t = r+1;
+	          stopflag3 = 0;
+                  while((t<m)&&(stopflag3==0))
+                  {
+                    if(((hit_locus1[t]-hit_locus1[t-1]) < 600000)&&(t<m))
+                    {
+                      t++;
+                    }
+                    else
+	            {
+//    printf("www: %d %d %d %d %d %d %s %d %d\n",r,t,n,m,t-r,m-n,S_Name[n],hit_locus1[t],hit_locus1[t-1]);
+                      stopflag3=1;
+	            }
+                  }
+		  if((t-r) < 20)
+                  {
+	            if((t-r) >= 4)
+	            {
+	              hit_list[num_blocks] = t-r;
+    printf("block0: %d %d %d %d %d %d %s %d %d\n",r,t,n,m,t-r,m-n,S_Name[n],hit_locus1[t-1],hit_locus1[t-2]);
+	              num_blocks++;
+		    }
+		    else
+	            {
+	              for(kk=r;kk<t;kk++)
+		         hit_mask2[kk] = 1;
+	            }
+	          }
+	          r = t-1;
+	       }
+	       if(num_blocks > 0)
+	       {
+	         hit_head[0] = 0;
+	         for(k=1;k<num_blocks;k++)
+                    hit_head[i] = hit_head[i-1]+hit_list[i-1];
+	         num_maxbl = 0;
+	         num_index = 0;
+  	         for(k=0;k<num_blocks;k++)
+                 {
+	            if(hit_list[k] > num_maxbl)
+	            {
+	              num_maxbl = hit_list[k];
+	              num_index = k;
+	            }
+                 }
+	         offset1 = hit_locus1[i+hit_head[num_index]];
+   	         offset2 = hit_locus1[i+hit_head[num_index]+num_maxbl-1];
+	         for(k=0;k<num_blocks;k++)
+                 {
+	            if(k < num_index)
+	            {
+	              for(t=0;t<hit_list[k];t++)
+	              {  
+		         int idt = hit_list[k]+t;
+		         hit_mask[idt+i] = offset1;
+                 printf("mask1: %s %d %d\n",R_Name[i],idt+i,hit_mask[idt+i]);
+	              } 
+	            }
+	            if(k > num_index)
+	            {
+	              for(t=0;t<hit_list[k];t++)
+	              { 
+		         int idt = hit_list[k]+t;
+		         hit_mask[idt+i] = offset2;
+                 printf("mask2: %s %d %d\n",R_Name[i],idt+i,hit_mask[idt+i]);
+	              } 
+	            }
+                 }
+	       }
+//               printf("www: %s %d %d %d %d\n",R_Name[i],offset1,offset2,k,num_index);
              }
-	     else if((m-n) <= 10)
+	     else
 	     {
-               if((n>0)&&(strcmp(S_Name[n-1],S_Name[m])==0))
-               {
-                 for(k=n;k<m;k++)
-	            hit_mask[k] = 1;
-               }
+	       for(kk=n;kk<m;kk++)
+		  hit_mask2[kk] = 1;
 	     }
-
-             if(abs(hit_locus2[n+1]-hit_locus2[n])>200000)
-               hit_mask[n] = 1;
-             for(k=n;k<m;k++)
-             {
-//               printf("www: %s %s %s %d %d %d %d %d\n",R_Name[i],S_Name[n],S_Name[m],superlength[n],hit_rcdex[k],ctg_rcdex,k,n);
-               if(hit_rcdex[k] != ctg_rcdex)
-                 hit_mask[k] = 1;
-             }
-	     n = m-1;
+             n = m-1;
           }
         }
         else
         {
+	   for(kk=i;kk<j;kk++)
+	      hit_mask2[kk] = 1;
 //          printf("www: %s %d %d\n",R_Name[i],hit_read2[i],superlength[i]);
         }
+	num_hits = j-i;
         i=j-1;
      }
 
-}
-
-
-/*   subroutine to sort out read pairs    */
-/* =============================== */
-void Readname_match(fasta *seq, char **argv,int args,int nSeq,int nRead)
-/* =============================== */
-{
-     FILE *namef;
-     int i,j,k=0,n_reads,i_reads;
-     int *readIndex;
-     int stopflag,idd = 0;
-     char **DBname,tagname[Max_N_NameBase],*st,*ed;
-     void ArraySort_String(int n,char **Pair_Name,int *brr);
-     char **cmatrix(long nrl,long nrh,long ncl,long nch);
-     int num_rd_find=0;
-     char line[500],base[100],zero[100]={0},*ptr;
-
-     n_reads = nSeq+nRead; 
-     DBname=cmatrix(0,n_reads+1,0,Max_N_NameBase);
-     R_Name2=cmatrix(0,nRead+1,0,Max_N_NameBase);
-     cellname=cmatrix(0,nRead+1,0,Max_N_NameBase);
-     if((readIndex= (int *)calloc(n_reads,sizeof(int))) == NULL)
-     {
-       printf("ERROR Memory_Allocate: calloc - readIndex\n");
-       exit(1);
-     }
-     if((cell2tag= (int *)calloc(nSeq,sizeof(int))) == NULL)
-     {
-       printf("ERROR Memory_Allocate: calloc - icell2tag\n");
-       exit(1);
-     }
-     if((refs2tag= (int *)calloc(nSeq,sizeof(int))) == NULL)
-     {
-       printf("ERROR Memory_Allocate: calloc - icell2tag\n");
-       exit(1);
-     }
-     if((insert_size= (int *)calloc(nRead,sizeof(int))) == NULL)
-     {
-       printf("ERROR Memory_Allocate: calloc - insert_size\n");
-       exit(1);
-     }
-     memset(cell2tag,-1,nSeq*4);
-     memset(refs2tag,-1,nSeq*4);
-     if((namef = fopen(argv[args+1],"r")) == NULL)
-     {
-       printf("ERROR Memory_Allocate:: reads group file \n");
-       exit(1);
-     }
-     
-     i_reads = 0;
-     while(!feof(namef))
-     {
-       fgets(line,500,namef);
-       if(feof(namef)) break;
-       i = 0;
-       for(ptr=strtok(line," ");ptr!=NULL;ptr=strtok((char *)NULL," "),i++)
-       {
-          if(i==0)
-          {
-            strcpy(base,zero);
-            strcat(base,ptr);
-            strcpy(R_Name2[i_reads],base);
-          }
-          else if(i==2)
-          {
-            strcpy(base,zero);
-            strcat(base,ptr);
-            insert_size[i_reads]=atoi(ptr);
-          }
-          else if(i==3)
-          {
-            strcpy(base,zero);
-            strcat(base,ptr);
-            strcpy(tagname,base);
-            st = tagname;
-            ed = strchr(tagname,'.');
-//            ed = strrchr(tagname,'_');
-            if(ed==NULL)
-              strcpy(cellname[i_reads],tagname);
-            else
-              strncpy(cellname[i_reads],tagname,ed-st);
-            i_reads++;
-            ptr = NULL;
-          }
-       }
-     }
-
-/*   find out the read name match   */
-     for(j=0;j<nSeq;j++)
-     {
-        strcpy(DBname[j],R_Name[j]);
-        readIndex[j]=j;
-     }
-     for(j=0;j<nRead;j++)
-     {
-        strcpy(DBname[j+nSeq],R_Name2[j]);
-        readIndex[j+nSeq]=j+nSeq;
-     }
-     n_reads=nSeq+nRead;
-     ArraySort_String(n_reads,DBname,readIndex);
-
-     num_rd_find=0;
-     for(i=0;i<n_reads;i++)
-     {
-/*      search reads with an index < i     */
-/*      search reads with an index > i     */
-        stopflag=0;
-        j=i+1;
-        if(readIndex[i]>=nSeq)
-          idd = readIndex[i];
-        while((j<n_reads)&&(stopflag==0))
-        {
-          if(strcmp(DBname[j],DBname[i])==0)
-          {
-            if(readIndex[j]>=nSeq)
-              idd = readIndex[j];
-//            num_rd_find++;
-            j++;
-          }
-          else
-            stopflag=1;
-        }
-        if((j-i)>=2)
-        {
-          for(k=i;k<j;k++)
-          {
-             if(readIndex[k]<nSeq)
-             {
-               cell2tag[readIndex[k]] = idd-nSeq;
-//         printf("name: %d %s\n",k,DBname[k]);
-               num_rd_find++;
-             }
-          }
-        }
-        i=j-1;
-     }
-     printf("reads found: %d %d %d\n",nSeq,num_rd_find,nRead);
-
-/*   find out the read name match   */
-     for(j=0;j<nSeq;j++)
-     {
-        strcpy(DBname[j],S_Name[j]);
-        readIndex[j]=j;
-     }
-     nRead = nContig;
-     for(j=0;j<nRead;j++)
-     {
-        strcpy(DBname[j+nSeq],(seq+j)->name);
-        readIndex[j+nSeq]=j+nSeq;
-     }
-     n_reads=nSeq+nRead;
-     ArraySort_String(n_reads,DBname,readIndex);
-
-     num_rd_find=0;
-     idd = 0;
-     for(i=0;i<n_reads;i++)
-     {
-/*      search reads with an index < i     */
-/*      search reads with an index > i     */
-        stopflag=0;
-        j=i+1;
-        if(readIndex[i]>=nSeq)
-          idd = readIndex[i];
-        while((j<n_reads)&&(stopflag==0))
-        {
-          if(strcmp(DBname[j],DBname[i])==0)
-          {
-            if(readIndex[j]>=nSeq)
-              idd = readIndex[j];
-//            num_rd_find++;
-            j++;
-          }
-          else
-            stopflag=1;
-        }
-        if((j-i)>=2)
-        {
-          for(k=i;k<j;k++)
-          {
-             if(readIndex[k]<nSeq)
-             {
-               refs2tag[readIndex[k]] = idd-nSeq;
-//         printf("name: %d %s\n",k,DBname[k]);
-               num_rd_find++;
-             }
-          }
-        }
-        i=j-1;
-     }
-     printf("contigs found: %d %d %d\n",nSeq,num_rd_find,nRead);
 }
 
 
