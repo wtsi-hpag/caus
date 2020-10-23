@@ -11,9 +11,10 @@ CAUSSMT0= caus_smalt0.o
 CAUSSMT1= caus_smalt1.o 
 CAUSSMT2= caus_smalt2.o 
 CAUSSMT3= caus_smalt3.o 
+CAUSSMT4= caus_clean.o 
 CAUSPIPE= caus.o 
 
-all  : caus_seqout caus_fasta caus_shred caus_assign caus_smalt0 caus_smalt1 caus_smalt2 caus_smalt3 caus
+all  : caus_seqout caus_fasta caus_shred caus_assign caus_smalt0 caus_smalt1 caus_smalt2 caus_smalt3 caus_clean caus
 
 caus_seqout: makefile $(CAUSPOUT)
 	$(CC) $(CFLAGS) -o $@ $(CAUSPOUT) $(LFLAGS) 
@@ -54,6 +55,11 @@ caus_smalt3: makefile $(CAUSSMT3)
 	$(CC) $(CFLAGS) -o $@ $(CAUSSMT3) $(LFLAGS) 
 	chmod o-r caus_smalt3 
 	cp caus_smalt3 caus-bin
+
+caus_clean: makefile $(CAUSSMT4)
+	$(CC) $(CFLAGS) -o $@ $(CAUSSMT4) $(LFLAGS) 
+	chmod o-r caus_clean 
+	cp caus_clean caus-bin
 
 caus: makefile $(CAUSPIPE)
 	$(CC) $(CFLAGS) -o $@ $(CAUSPIPE) $(LFLAGS) 
