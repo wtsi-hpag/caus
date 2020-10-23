@@ -222,7 +222,7 @@ int main(int argc, char **argv)
     }
 
     memset(syscmd,'\0',2000);
-    sprintf(syscmd,"egrep s2:i align.paf | awk '%s' > align.dat","($12>=5){print $12,$11,$1,$6,$3,$4,$8,$9,$5,$2,99.90,$2,$7}");
+    sprintf(syscmd,"egrep s2:i align.paf | awk '%s' > align.dat","{print $12,$11,$1,$6,$3,$4,$8,$9,$5,$2,99.90,$2,$7}");
     if(system(syscmd) == -1)
     {
 //      printf("System command error:\n);
@@ -264,7 +264,21 @@ int main(int argc, char **argv)
     }
 
     memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_smalt3 align.clean3 align.match > try.out",bindir);
+    sprintf(syscmd,"sort -k 2,2 -k 4,4 -k 7,7n align.clean3 > align.clean4");
+    if(system(syscmd) == -1)
+    {
+//      printf("System command error:\n);
+    }
+    
+    memset(syscmd,'\0',2000);
+    sprintf(syscmd,"%s/caus_clean align.clean4 align.clean5 > try.out",bindir);
+    if(system(syscmd) == -1)
+    {
+//      printf("System command error:\n);
+    }
+
+    memset(syscmd,'\0',2000);
+    sprintf(syscmd,"%s/caus_smalt3 align.clean5 align.match > try.out",bindir);
     if(system(syscmd) == -1)
     {
 //      printf("System command error:\n);

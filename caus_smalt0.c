@@ -320,7 +320,7 @@ int main(int argc, char **argv)
     nSeq=nseq;
     R_Name=cmatrix(0,nseq+10,0,Max_N_NameBase);
     S_Name=cmatrix(0,nseq+10,0,Max_N_NameBase);
-    T_Name=cmatrix(0,nseq+10,0,6);
+    T_Name=cmatrix(0,nseq+10,0,3);
     n_readsMaxctg=0;
     n_contig=0;
     n_reads=0;
@@ -334,7 +334,7 @@ int main(int argc, char **argv)
 /*  read the alignment files         */
     printf("www: %d %s\n",nseq,argv[args]);
     i=0;
-    while(fscanf(namef,"%s %d %s %s %d %d %d %d %s %d %f %d %d",tempc1,&hit_score[i],R_Name[i],S_Name[i],&hit_read1[i],&hit_read2[i],&hit_locus1[i],&hit_locus2[i],RC,&hit_length[i],&hit_identy[i],&readlength[i],&superlength[i])!=EOF)
+    while(fscanf(namef,"%s %d %s %s %d %d %d %d %s %d %f %d %d",tempc1,&hit_score[i],R_Name[i],S_Name[i],&hit_read1[i],&hit_read2[i],&hit_locus1[i],&hit_locus2[i],T_Name[i],&hit_length[i],&hit_identy[i],&readlength[i],&superlength[i])!=EOF)
     {
         int idt;
         st = readname;
@@ -389,11 +389,17 @@ void Indel_Process(char **argv,int args,int nSeq)
         if((j-i)>=2) 
         {
           int k = j-1;
-          fprintf(namef2,"60 %d %s %s %d %d %d %d + %d %f %d %d\n",hit_score[k],R_Name[k],S_Name[k],hit_read1[k],hit_read2[k],hit_locus1[k],hit_locus2[k],hit_length[k],hit_identy[k],readlength[k],superlength[k]);
+	  if(T_Name[k][0] == '+')
+            fprintf(namef2,"60 %d %s %s %d %d %d %d F %d %f %d %d\n",hit_score[k],R_Name[k],S_Name[k],hit_read1[k],hit_read2[k],hit_locus1[k],hit_locus2[k],hit_length[k],hit_identy[k],readlength[k],superlength[k]);
+          else
+            fprintf(namef2,"60 %d %s %s %d %d %d %d C %d %f %d %d\n",hit_score[k],R_Name[k],S_Name[k],hit_read1[k],hit_read2[k],hit_locus1[k],hit_locus2[k],hit_length[k],hit_identy[k],readlength[k],superlength[k]);
         }
         else
         {
-          fprintf(namef2,"60 %d %s %s %d %d %d %d + %d %f %d %d\n",hit_score[i],R_Name[i],S_Name[i],hit_read1[i],hit_read2[i],hit_locus1[i],hit_locus2[i],hit_length[i],hit_identy[i],readlength[i],superlength[i]);
+	  if(T_Name[i][0] == '+')
+            fprintf(namef2,"60 %d %s %s %d %d %d %d F %d %f %d %d\n",hit_score[i],R_Name[i],S_Name[i],hit_read1[i],hit_read2[i],hit_locus1[i],hit_locus2[i],hit_length[i],hit_identy[i],readlength[i],superlength[i]);
+          else
+            fprintf(namef2,"60 %d %s %s %d %d %d %d C %d %f %d %d\n",hit_score[i],R_Name[i],S_Name[i],hit_read1[i],hit_read2[i],hit_locus1[i],hit_locus2[i],hit_length[i],hit_identy[i],readlength[i],superlength[i]);
         }
 	num_hits = j-i;
 	offset = offset+num_hits;
