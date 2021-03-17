@@ -3,67 +3,37 @@ CC= gcc
 CFLAGS= -O2
 LFLAGS= -lm
 
-CAUSPOUT= fast.o caus_seqout.o 
-CAUSFAST= fast.o caus_fasta.o
-CAUSSHED= fast.o caus_shred.o
-CAUSPASA= caus_assign.o 
-CAUSSMT0= caus_smalt0.o 
-CAUSSMT1= caus_smalt1.o 
-CAUSSMT2= caus_smalt2.o 
-CAUSSMT3= caus_smalt3.o 
-CAUSSMT4= caus_clean.o 
-CAUSPIPE= caus.o 
+SOURCES= caus_seqout.c caus_fasta.c fastq2fasta.c caus_shred.c caus_assign.c caus_smalt0.c caus_smalt1.c caus_smalt2.c caus_smalt3.c caus_clean.c caus.c
 
-all  : caus_seqout caus_fasta caus_shred caus_assign caus_smalt0 caus_smalt1 caus_smalt2 caus_smalt3 caus_clean caus
-
-caus_seqout: makefile $(CAUSPOUT)
-	$(CC) $(CFLAGS) -o $@ $(CAUSPOUT) $(LFLAGS) 
-	chmod o-r caus_seqout
-	cp caus_seqout caus-bin
-       
-caus_fasta: makefile $(CAUSFAST)
-	$(CC) $(CFLAGS) -o $@ $(CAUSFAST) $(LFLAGS) 
-	chmod o-r caus_fasta 
-	cp caus_fasta caus-bin 
-
-caus_shred: makefile $(CAUSSHED)
-	$(CC) $(CFLAGS) -o $@ $(CAUSSHED) $(LFLAGS) 
-	chmod o-r caus_shred 
-	cp caus_shred caus-bin 
-
-caus_assign: makefile $(CAUSPASA)
-	$(CC) $(CFLAGS) -o $@ $(CAUSPASA) $(LFLAGS) 
-	chmod o-r caus_assign 
-	cp caus_assign caus-bin
-
-caus_smalt0: makefile $(CAUSSMT0)
-	$(CC) $(CFLAGS) -o $@ $(CAUSSMT0) $(LFLAGS) 
-	chmod o-r caus_smalt0 
-	cp caus_smalt0 caus-bin
-
-caus_smalt1: makefile $(CAUSSMT1)
-	$(CC) $(CFLAGS) -o $@ $(CAUSSMT1) $(LFLAGS) 
-	chmod o-r caus_smalt1 
-	cp caus_smalt1 caus-bin
-
-caus_smalt2: makefile $(CAUSSMT2)
-	$(CC) $(CFLAGS) -o $@ $(CAUSSMT2) $(LFLAGS) 
-	chmod o-r caus_smalt2 
-	cp caus_smalt2 caus-bin
-
-caus_smalt3: makefile $(CAUSSMT3)
-	$(CC) $(CFLAGS) -o $@ $(CAUSSMT3) $(LFLAGS) 
-	chmod o-r caus_smalt3 
-	cp caus_smalt3 caus-bin
-
-caus_clean: makefile $(CAUSSMT4)
-	$(CC) $(CFLAGS) -o $@ $(CAUSSMT4) $(LFLAGS) 
-	chmod o-r caus_clean 
-	cp caus_clean caus-bin
-
-caus: makefile $(CAUSPIPE)
-	$(CC) $(CFLAGS) -o $@ $(CAUSPIPE) $(LFLAGS) 
-	chmod o-r caus
-	cp caus caus-bin
+OBJS = $(patsubst %.c,%.o,$(SOURCES)) fast.o
+EXECS = $(patsubst %.c,%,$(SOURCES))
+EXECS_BIN = $(patsubst %.c,caus-bin/%,$(SOURCES))
+COMPILE = $(CC) $(CFLAGS) 
 
 
+all:  cleanall iprint $(OBJS) executables clean oprint
+
+executables:
+	for exe in $(EXECS);  do $(COMPILE) -o $$exe $$exe.o fast.o $(LFLAGS); cp $$exe caus-bin/.; done
+
+%.o: %.c fasta.h
+	$(CC) $(CFLAGS)  -c $< -o $@
+
+iprint:
+	@echo '+++ Compiling All ... '
+
+oprint:
+	@echo 'All Done '
+
+
+clean: 
+	@echo '+++ Cleaning Up ... '
+	@rm -f $(EXECS)
+	@rm -f $(OBJS)
+	@cp caus-bin/caus .
+
+cleanall: 
+	@echo '+++ Cleaning All ... '
+	@rm -f $(EXECS)
+	@rm -f $(OBJS) fast.o
+	@rm -f $(EXECS_BIN)
