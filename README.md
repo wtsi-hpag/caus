@@ -14,7 +14,7 @@ This gives you the assigned assembly file: assign.fasta
 
 
 ### Note:                                                                         
-	1. you need to give the full path of the caus  file.                     \
+        1. you need to give the full path of the caus  file.                     \
       	2. target.fasta and reference.fasta should be in your working directory. \
       	3. If you have a Segmentation fault (core dumped), please use try this   \
 
