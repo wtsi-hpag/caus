@@ -24,6 +24,7 @@ if [[ ! -s $bindir/minimap2 ]]; then
 	make &> $projdir/src/log/minimap2_installation.log
     fi
 
+    chmod 755 minimap2
     cp minimap2 $bindir
 fi
 
@@ -55,6 +56,7 @@ if [[ ! -s $bindir/smalt ]]; then
     fi
 
     cp $projdir/src/smalt-0.7.4/smalt_x86_64 $bindir/smalt
+    chmod 755 $bindir/smalt
 fi
 if  [[ ! -s $bindir/smalt ]]; then 
     echo " !! Error: smalt not installed properly!"; 
