@@ -14,27 +14,26 @@ COMPILE = $(CC) $(CFLAGS)
 all:  cleanall iprint $(OBJS) executables clean oprint
 
 executables:
-        for exe in $(EXECS);  do $(COMPILE) -o $$exe $$exe.o fast.o $(LFLAGS); cp $$exe caus-bin/.; done
+	for exe in $(EXECS);  do $(COMPILE) -o $$exe $$exe.o fast.o $(LFLAGS); cp $$exe caus-bin/.; done
 
 %.o: %.c fasta.h
-        $(CC) $(CFLAGS)  -c $< -o $@
+	$(CC) $(CFLAGS)  -c $< -o $@
 
 iprint:
-        @echo '+++ Compiling All ... '
+	@echo '+++ Compiling All ... '
 
 oprint:
-        @echo 'All Done '
+	@echo 'All Done '
 
 
 clean:
-        @echo '+++ Cleaning Up ... '
-        @rm -f $(EXECS)
-        @rm -f $(OBJS)
-        @cp caus-bin/caus .
+	@echo '+++ Cleaning Up ... '
+	@rm -f $(EXECS)
+	@rm -f $(OBJS)
+	@cp caus-bin/caus .
 
 cleanall:
-        @echo '+++ Cleaning All ... '
-        @rm -f $(EXECS)
-        @rm -f $(OBJS) fast.o
-        @rm -f $(EXECS_BIN)
-~                                      
+	@echo '+++ Cleaning All ... '
+	@rm -f $(EXECS)
+	@rm -f $(OBJS) fast.o
+	@rm -f $(EXECS_BIN)
