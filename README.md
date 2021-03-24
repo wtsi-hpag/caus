@@ -1,6 +1,6 @@
 # CAUS
 
-Pipeline for Chromosome Assignment Using Synteny 
+Pipeline for Chromosome Assignment Using Synteny and it also fixes 3D-DNA's contig problems 
 
 Say if you have two assemblies target.fasta and reference.fasta
 
@@ -27,13 +27,20 @@ Requirements for compiling: gcc
 	$ cd caus
 	$ bash install.sh 
 
-## Other applications
+## Running with 3D-DNA 
 3D-DNA is a popular HiC scaffolding pipeline. 
 However, it makes so many breakpoints when examining HiC coverage profile.
 After scaffolding with 3D-DNA, contigs are sometimes fragmented.
-Run caus to fix this problem, say you have contigs.fasta scaffolds-3D-DNA.fasta
+You can run caus to fix this problem. 
+
+### Say you have contigs.fasta scaffolds-3D-DNA.fasta
 
 	/tmp/casu/src/caus contigs.fasta scaffolds-3D-DNA.fasta scaffolds-caus3D.fasta > try.out
+
+Here
+ 	contigs.fasta is produced with long or short reads; 
+	scaffolds-3D-DNA.fasta is an output file from 3D-DNA;
+	scaffolds-caus3D.fasta is a new scaffolding file.
 
 More detailed information and examples can be found in the PPT file. 
 
