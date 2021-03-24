@@ -13,13 +13,15 @@ You want to assign scaffolds in target.fasta to the reference assembly reference
 This gives you the assigned assembly file: assign.fasta 
 
 
-Note: 1. you need to give the full path of the caus  file.
-      2. target.fasta and reference.fasta should be in your working directory.
-      3. If you have a Segmentation fault (core dumped), please use try this
+### Note:
+ 
+	1. you need to give the full path of the caus  file.
+      	2. target.fasta and reference.fasta should be in your working directory.
+      	3. If you have a Segmentation fault (core dumped), please use try this
 
          /tmp/casu/caus -len 1000000 arget.fasta reference.fasta assign.fasta > try.out
 
-##Download and Compile:
+## Download and Compile:
 
 Requirements for compiling: gcc
 
@@ -37,10 +39,10 @@ You can run caus to fix this problem.
 
 	/tmp/casu/src/caus contigs.fasta scaffolds-3D-DNA.fasta scaffolds-caus3D.fasta > try.out
 
-Here
- 	contigs.fasta is produced with long or short reads; 
-	scaffolds-3D-DNA.fasta is an output file from 3D-DNA;
-	scaffolds-caus3D.fasta is a new scaffolding file.
+### Here                                                              
+ 	contigs.fasta is produced with long or short reads;       \ 
+	scaffolds-3D-DNA.fasta is an output file from 3D-DNA;     \
+	scaffolds-caus3D.fasta is a new scaffolding file.         \
 
 More detailed information and examples can be found in the PPT file. 
 
