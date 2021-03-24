@@ -74,6 +74,7 @@ else
 fi
 
 
+    chmod 755 $bindir/smalt
 ###### Compile caus sources ######
 
 echo; echo "Compiling caus sources"
