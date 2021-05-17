@@ -5,7 +5,7 @@
  *                                                                          *
  *  Author: Zemin Ning (zn1@sanger.ac.uk)                                   *
  *                                                                          *
- *  The file is part of CAUS pipeline - Chromosome Assignment Using Synteny *
+ *  This file is part of CAUS Chromosome Assignment Using Synteny pipeline  *
  *                                                                          *
  *  Scaff10x is a free software: you can redistribute it and/or modify it   *
  *  under the terms of the GNU General Public License as published by the   *
@@ -23,7 +23,6 @@
  ****************************************************************************
  ****************************************************************************/
 /****************************************************************************/
-
  
 #include <math.h>
 #include <values.h>
@@ -33,7 +32,6 @@
 #include <dirent.h>
 #include <string.h>
 #include <ctype.h>
-#include <unistd.h>
 #include "fasta.h"
 
 #define GT '>'
@@ -43,28 +41,16 @@
 #define PADCHAR '-'
 #define MAX_N_BRG 50000 
 #define MAX_N_ROW 40000 
-#define Max_N_NameBase 400 
-#define Max_N_NameBase2 400 
+#define nfm 800000
+#define nfm_sub 500000
+#define Max_N_NameBase 60
 #define Max_N_Pair 100
-static char bindir[2000];
-static char tmpdir[2000];
-static char **S_Name;
-static int *insert_siz,*insert_dev,*core_list,*ctg_list,*ctg_head,*read2contig;
-static int *readIndex;
+static long *h_dna;
 
 /* SSAS default parameters   */
-static int n_group=0;
-static int n_score=500;
-static int num_reads=10;
-static int num_links=8;
-static int gap_size=20000;
-static int len_shred=2000;
-static int len_edges=50000;
-static int len_matrx=2000;
-static int min_edge = 5;
-static int uplinks = 50;
-static int run_align = 1;
-static int min_len = 100000;
+static int IMOD=0;
+static int set_qual=15;
+static int set_len=10;
 
 typedef struct
 {
@@ -72,482 +58,141 @@ typedef struct
        int fsindex;
 } SIO;
 
+static fasta **expp;
+fasta *expt;
 
 int main(int argc, char **argv)
 {
-    int i,nSeq,args;
-    char *st,*ed;
-    char **cmatrix(B64_long nrl,B64_long nrh,B64_long ncl,B64_long nch);
-    void ArraySort_String2(int n,char **Pair_Name,int *brr);
-    fasta *seq;
     FILE *fp,*namef,*namef2;
-    int size_file;
-    int m_score,n_nodes,n_gap1,n_gap2,n_debug,num_sigma;
-    void decodeReadpair(int nSeq);
-    void HashFasta_Head(int i, int nSeq);
-    void HashFasta_Table(int i, int nSeq);
-    void Search_SM(fasta *seq,int nSeq);
-    void Assemble_SM(int arr,int brr);
-    void Read_Index(int nSeq,char *namefile);
-    void Read_Group(fasta *seq,int nSeq,int nRead,int cindex);
-    void File_Output(int aaa);
+    long dataSize,totalBases;
+    int i,j,k,nSeq,args,qthresh=0;
+    int *ctg_length,*ctg_index;
+    int nseq,kick_flag = 0;
+    fasta *seq,*seqp;
+    char ctgname[30];
     void Memory_Allocate(int arr);
-    char tempa[2000],tempc[2000],syscmd[2000],file_input[2000],file_reference[2000],file_scaff2chr[2000],workdir[2000];
-    char file_read1[900],file_read2[900],samname[500],file_stats[2000];
-    int systemRet = system (syscmd);
-    int systemChd = chdir(tmpdir);
-    pid_t pid;
+    char **cmatrix(long nrl,long nrh,long ncl,long nch);
+    void ArraySort2_Int2(int n, int *arr, int *brr);
+    fasta *segg;
+    long Size_pdata,Size_q_pdata;
+    unsigned int *pidata;
+    int num_seqque,num_contig;
+    char *pdata,*st;
 
     seq=NULL;
-    system("ps aux | grep scaff2chr; date");
-
     if(argc < 2)
     {
-         printf("Usage: %s <Input_assembly.fasta> <Reference_assembly.fasta> <Assigned-scaffolds.fasta>\n",argv[0]);
-         exit(1);
+      printf("Usage: %s <-name contigs> <-len 10> <input fast/aq file> <output fasta file> <output tag file>\n",argv[0]);
+      exit(1);
     }
-
-    m_score = 100;
-    n_nodes = 30;
-    n_debug = 1;
 
     nSeq=0;
     args=1;
     for(i=1;i<argc;i++)
     {
-       if(!strcmp(argv[i],"-gap"))
+       if(!strcmp(argv[i],"-mod"))
        {
-         sscanf(argv[++i],"%d",&gap_size); 
+         sscanf(argv[++i],"%d",&IMOD); 
          args=args+2;
        }
-       else if(!strcmp(argv[i],"-debug"))
+       else if(!strcmp(argv[i],"-qual"))
        {
-         sscanf(argv[++i],"%d",&n_debug);
+         sscanf(argv[++i],"%d",&set_qual);
          args=args+2;
        }
        else if(!strcmp(argv[i],"-len"))
        {
-         sscanf(argv[++i],"%d",&min_len);
+         sscanf(argv[++i],"%d",&set_len);
          args=args+2;
        }
-       else if(!strcmp(argv[i],"-shred"))
+       else if(!strcmp(argv[i],"-name"))
        {
-         sscanf(argv[++i],"%d",&len_shred);
-         args=args+2;
-       }
-       else if(!strcmp(argv[i],"-nodes"))
-       {
-         sscanf(argv[++i],"%d",&n_nodes);
-         args=args+2;
-       }
-       else if(!strcmp(argv[i],"-score"))
-       {
-         sscanf(argv[++i],"%d",&n_score);
+         memset(ctgname,'\0',30);
+         sscanf(argv[++i],"%s",ctgname);
          args=args+2;
        }
     }
 
-    pid = getpid();
-    memset(tempa,'\0',2000);
-    if (!getcwd(tempa, sizeof(tempa)))
+    printf("name:  %s\n",ctgname);
+    if((fp=fopen(argv[args],"rb"))==NULL) error("Cannot open file\n");
+    fseek(fp, 0, SEEK_END);
+    Size_q_pdata = ftell(fp) + 1;
+    fclose(fp);
+    if((pdata=(char*)calloc(Size_q_pdata,sizeof(char)))==NULL)
+      error("calloc pdata\n");
+    num_seqque = extractFastq(argv[args],pdata,Size_q_pdata);
+    if((segg=(fasta*)calloc((num_seqque+1),sizeof(fasta)))==NULL)
+      error("calloc segg\n");
+    if((seq=decodeFastq(argv[args],&num_seqque,&totalBases,pdata,Size_q_pdata,segg))==NULL)
+      error("no query data found.\n");
+    nseq=0;
+    nSeq = num_seqque;
+    printf("Number of shotgun reads  %d \n",nSeq);
+
+    if(totalBases == 0)
+      return EXIT_SUCCESS;
+
+    if((ctg_length = (int *)calloc(nSeq,sizeof(int))) == NULL)
     {
+      printf("fmate: calloc - ctg_length\n");
       exit(1);
-    } 
-    memset(tmpdir,'\0',2000);
-    memset(workdir,'\0',2000);
-    sprintf(tmpdir,"%s/",tempa);
-    sprintf(workdir,"%s/tmp_rununik_%d/",tempa,pid);
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"mkdir %s",workdir);
-    if(system(syscmd) == -1)
-    {
-      printf("System command error:\n");
     }
-//    system (syscmd);
-
-    if(chdir(workdir) == -1)
+    if((ctg_index = (int *)calloc(nSeq,sizeof(int))) == NULL)
     {
-      printf("System command error: chdir\n");
+      printf("fmate: calloc - ctg_index\n");
+      exit(1);
     }
-     
-    st = argv[0];
-    ed = strrchr(argv[0],'/');
-    memset(tempc,'\0',2000);
-    strncpy(tempc,argv[0],ed-st);
-    memset(bindir,'\0',2000);
-    sprintf(bindir,"%s/caus-bin",tempc);
-
-    memset(file_input,'\0',2000);
-    memset(file_reference,'\0',2000);
-    memset(file_scaff2chr,'\0',2000);
-    memset(file_stats,'\0',2000);
-    sprintf(file_input,"%s/%s",tempa,argv[args]);
-    sprintf(file_reference,"%s/%s",tempa,argv[args+1]);
-    sprintf(file_scaff2chr,"%s/%s",tempa,argv[args+2]);
-    sprintf(file_stats,"%s/%s.stats",tempa,argv[args+2]);
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_fasta -name input -len 10 %s input.fasta input.tag > try.out",bindir,file_input);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
+    for(i=0;i<nSeq;i++)
+    { 
+       seqp = seq + i;
+       ctg_length[i] = seqp->length;
+       ctg_index[i] = i; 
     }
 
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_sort -name reference -len 10 %s ref.fasta > try.out",bindir,file_reference);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
+    ArraySort2_Int2(nSeq,ctg_length,ctg_index);
 
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_fasta -name reference -len %d ref.fasta reference.fasta reference.tag > try.out",bindir,min_len);
-    if(system(syscmd) == -1)
+/*  process contigs one by one   */
+    if((namef = fopen(argv[args+1],"w")) == NULL)
     {
-//      printf("System command error:\n);
+      printf("ERROR main:: reads group file \n");
+      exit(1);
     }
+    for(i=0;i<nSeq;i++)
+    {
+       int seq_st,seq_ed,rc,seq_len,nline;
 
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_shred -name input -length %d input.fasta input.shred > try.out",bindir,len_shred);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
+       seqp= seq + ctg_index[i];
+       seq_st = 0;
+       seq_ed = seqp->length;
+       if(seq_ed>=set_len)
+       {
+         seq_len = seq_ed-seq_st;
+         nline = seq_len/60;
+	 fprintf(namef,">%s_%d\n",ctgname,i);
+         for(k=0;k<nline;k++)
+         {
+            for(j=0;j<60;j++)
+               fprintf(namef,"%c",seqp->data[k*60+j+seq_st]);
+            fprintf(namef,"\n");
+         }
+         for(j=0;j<(seq_len-(nline*60));j++)
+            fprintf(namef,"%c",seqp->data[nline*60+j+seq_st]);
+         if((seq_len%60)!=0)
+           fprintf(namef,"\n");
+       }
     }
+    fclose(namef);
 
-/*
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/smalt index -k 13 -s 6 hash_reference reference.fasta > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-    printf("System command error:\n);
-    }
-
-    sprintf(syscmd,"%s/smalt map -f ssaha -m %d -n %d -o align.dat -O hash_reference input.shred > try.out",bindir,n_score,n_nodes);
-                          */
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/minimap2 -x map10k reference.fasta input.shred > align.paf",bindir);
-    if(system(syscmd) == -1)
-    {
-//    printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"egrep s2:i align.paf | awk '%s' > align.dat","{print $12,$11,$1,$6,$3,$4,$8,$9,$5,$2,99.90,$2,$7}");
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"sort -k 3,3 -k 2,2n align.dat > align.dat0");
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-    
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_smalt0 align.dat0 align.dat1 > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-    
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_smalt1 align.dat1 align.clean1 > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_smalt2 align.clean1 align.clean2 > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"egrep reference align.clean2 > align.clean3");
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"sort -k 2,2 -k 4,4 -k 7,7n align.clean3 > align.clean4");
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-    
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_clean align.clean4 align.clean5 > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_smalt3 align.clean5 align.match > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_assign align.match scaff2chr.dat > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"sort -k 4,4n -k 12,12n scaff2chr.dat | awk '%s' > scaff2chr.sort","{print $1_$3,$4,$2,$12,$11}");
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/caus_seqout input.fasta scaff2chr.sort reference.tag caus.fastq stats.dat > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"%s/fastq2fasta caus.fastq caus.fasta > try.out",bindir);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"mv caus.fasta %s",file_scaff2chr);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    memset(syscmd,'\0',2000);
-    sprintf(syscmd,"mv stats.dat %s",file_stats);
-    if(system(syscmd) == -1)
-    {
-//      printf("System command error:\n);
-    }
-
-    if(n_debug == 0)
-    {
-      memset(syscmd,'\0',2000);
-      sprintf(syscmd,"rm -rf * > /dev/null");
-      if(system(syscmd) == -1)
-      {
-//      printf("System command error:\n);
-      }
-
-      chdir(tmpdir);
-
-      memset(syscmd,'\0',2000);
-      sprintf(syscmd,"rm -rf %s > /dev/null",workdir);
-      if(system(syscmd) == -1)
-      {
-//      printf("System command error:\n);
-      }
-    }
+    if(seq){
+        free(seq->name);
+        free(seq);
+        seq = NULL;
+    }    
+    printf("Job finished for %d contigs!\n",nSeq);
     return EXIT_SUCCESS;
 
 }
 /* end of the main */
-
-
-
-/*   subroutine to sort out read pairs    */
-/* =============================== */
-void Read_Index(int nSeq, char *namefile)
-/* =============================== */
-{
-     int i,j,nseq;
-     int i_reads,n_reads,c_reads,insertsize=0;
-     FILE *namef;
-     char *ptr;
-     char line[500];
-     char **cmatrix(B64_long nrl,B64_long nrh,B64_long ncl,B64_long nch);
-
-
-     if((namef = fopen(namefile,"r")) == NULL)
-     {
-       printf("ERROR main:: reads group file \n");
-       exit(1);
-     }
-     nseq = 0;
-     i_reads = 0;
-     n_reads = 0;
-     c_reads = 0;
-     while(!feof(namef))
-     {
-       if(fgets(line,500,namef) == NULL)
-            printf("Data input file problem!\n");
-       if(feof(namef)) break;
-       nseq++;
-     }
-     fclose(namef);
-
-     nseq = 2*nseq;
-     if((ctg_head = (int *)calloc(nseq,sizeof(int))) == NULL)
-     {
-       printf("fmate: calloc - ctg_head\n");
-       exit(1);
-     }
-     if((ctg_list = (int *)calloc(nseq,sizeof(int))) == NULL)
-     {
-       printf("fmate: calloc - ctg_list\n");
-       exit(1);
-     }
-     if((core_list = (int *)calloc(nseq,sizeof(int))) == NULL)
-     {
-       printf("fmate: calloc - core_list\n");
-       exit(1);
-     }
-     if((read2contig = (int *)calloc(nseq,sizeof(int))) == NULL)
-     {
-       printf("fmate: calloc - read2contig\n");
-       exit(1);
-     }
-
-     nseq = nseq*3;
-     S_Name=cmatrix(0,nseq,0,Max_N_NameBase);
-     if((insert_siz = (int *)calloc(nseq,sizeof(int))) == NULL)
-     {
-       printf("fmate: calloc - insert\n");
-       exit(1);
-     }
-     if((insert_dev = (int *)calloc(nseq,sizeof(int))) == NULL)
-     {
-       printf("fmate: calloc - insert\n");
-       exit(1);
-     }
- 
-     if((namef = fopen(namefile,"r")) == NULL)
-     {
-       printf("ERROR main:: reads group file \n");
-       exit(1);
-     }
-
-     j = 0;
-     insertsize = 0;
-     while(!feof(namef))
-     {
-       int nPair=0,len=0;
-       char line2[500],line3[500],base[500];
-
-       if(fgets(line,500,namef) == NULL)
-            printf("Data input file problem!\n");
-       if(feof(namef)) break;
-       strcpy(line2,line);
-       strcpy(line3,line);
-       insertsize = 0;
-       if((strncmp(line,"readnames",9))==0)
-       {
-         i=0;
-         c_reads = 0;
-         for(ptr=strtok(line2," ");ptr!=NULL;ptr=strtok((char *)NULL," "),i++)
-         {
-            if(i==5)
-            {
-                memset(base,'\0',500);
-//                len=strlen(ptr);
-//                strncpy(base,ptr,len-1);
-                strcat(base,ptr);
-                c_reads = atoi(base);
-            }
-         }
-//       printf("creads: %d %d\n",c_reads,n_reads);
-         if(n_group>0)
-           ctg_list[n_group-1]=n_reads;
-         n_group++;
-         n_reads = 0;
-       }
-       else
-       {      
-         for(ptr=strtok(line," ");ptr!=NULL;ptr=strtok((char *)NULL," "),nPair++)
-         {
-         }
-         i=0;
-         for(ptr=strtok(line3," ");ptr!=NULL;ptr=strtok((char *)NULL," "),i++)
-         {
-            if(nPair>1)
-            {
-              if(i==(nPair-2))
-              {
-                memset(base,'\0',500);
-                strcat(base,ptr);
-                insertsize = atoi(base);
-              }
-            }
-         }
-         i=0;
-         j=0;
-         for(ptr=strtok(line2," ");ptr!=NULL;ptr=strtok((char *)NULL," "),i++)
-         {
-            if(i==0)
-            {
-
-              len=strlen(ptr);
-              if(nPair==1)
-                strncpy(S_Name[i_reads],ptr,len-1);
-              else
-                strncpy(S_Name[i_reads],ptr,len);
-//       printf("reads: %d %d %d %d %s\n",j,i_reads,insertsize,c_reads,S_Name[i_reads]);
-              i_reads++;
-              j++;
-            }
-//            else if(insertsize<50000)
-            else if((insertsize<50000)&&(c_reads>4))
-            {
-              if(i==1)
-              {
-                len=strlen(ptr);
-                strncpy(S_Name[i_reads],ptr,len);
-                i_reads++;
-                j++;
-              }
-              else if((i==2)&&(i<(nPair-2)))
-              {
-                len=strlen(ptr);
-                strncpy(S_Name[i_reads],ptr,len);
-                i_reads++;
-                j++;
-              }
-/*              else if(i==(nPair-2))
-              {
-                memset(base,'\0',500);
-                strcat(base,ptr);
-                for(k=0;k<j;k++)
-                   insert_siz[i_reads-k-1] = atoi(base);
-              }
-              else if(i==(nPair-1))
-              {
-                memset(base,'\0',500);
-                strcat(base,ptr);
-                for(k=0;k<j;k++)
-                   insert_dev[i_reads-k-1] = atoi(base);
-              }   */
-            }
-         }
-         n_reads = n_reads+j;
-       }
-       c_reads++;
-     }
-     fclose(namef);
-     printf("contig: %d %d\n",n_reads,i_reads);
-     ctg_list[n_group-1]=n_reads;
-     ctg_head[0]=0;
-     for(i=1;i<n_group;i++)
-        ctg_head[i]=ctg_head[i-1]+ctg_list[i-1];
-      
-}
 
 #define SWAP(a,b) temp=(a);(a)=b;(b)=temp;
 
@@ -557,11 +202,11 @@ void Read_Index(int nSeq, char *namefile)
      vol. 21, pp. 847-857) also see Numerical Recipes in C                  */  
 
 /* =============================== */
-void ArraySort_Long(int n, B64_long *arr)
+void ArraySort_Long(int n, long *arr)
 /* =============================== */
 {
      int i,ir=n-1,j,k,m=0,jstack=0,NSTACK=50,istack[NSTACK];
-     B64_long a,temp,MIN=7;
+     long a,temp,MIN=7;
 
      for(;;)
      {
@@ -725,11 +370,11 @@ void ArraySort_Int(int n, int *arr)
 
 
 /* =============================== */
-void ArraySort_Mix(int n, B64_long *arr, int *brr)
+void ArraySort_Mix(int n, long *arr, int *brr)
 /* =============================== */
 {
      int i,ir=n-1,j,k,m=0,jstack=0,b,NSTACK=50,istack[NSTACK];
-     B64_long a,temp,MIN=7;
+     long a,temp,MIN=7;
 
      for(;;)
      {
@@ -1008,11 +653,11 @@ void ArraySort2_Int2(int n, int *arr, int *brr)
 }
 
 /* =============================== */
-void ArraySort_Mix3(int n, B64_long *arr, int *brr, int *crr)
+void ArraySort_Mix3(int n, long *arr, int *brr, int *crr)
 /* =============================== */
 {
      int i,ir=n-1,j,k,m=0,jstack=0,b,c,NSTACK=50,istack[NSTACK];
-     B64_long a,temp,MIN=7;
+     long a,temp,MIN=7;
 
      for(;;)
      {
@@ -1115,7 +760,7 @@ void ArraySort_Mix3(int n, B64_long *arr, int *brr, int *crr)
 
 /*   to swap the string arrays           */
 /* ============================================= */
-void s_swap(char **Pair_Name, int i, int j)
+void s_swap(char Pair_Name[][Max_N_NameBase], int i, int j)
 /* ============================================= */
 {
      char temp[Max_N_NameBase];
@@ -1128,7 +773,7 @@ void s_swap(char **Pair_Name, int i, int j)
 
 /*   to sort the string array in order          */
 /* ============================================= */
-void ArraySort_String(int n, char **Pair_Name, int *brr)
+void ArraySort_String(int n, char Pair_Name[][Max_N_NameBase], int *brr)
 /* ============================================= */
 {
      int i,ir=n-1,j,k,m=0,jstack=0,b,NSTACK=50,istack[NSTACK];
@@ -1222,120 +867,11 @@ void ArraySort_String(int n, char **Pair_Name, int *brr)
      }
 }
 
-/*   to swap the string arrays           */
-/* ============================================= */
-void s_swap2(char **Pair_Name, int i, int j)
-/* ============================================= */
-{
-     char temp[Max_N_NameBase2];
-
-     strcpy(temp,Pair_Name[i]);
-     strcpy(Pair_Name[i],Pair_Name[j]);
-     strcpy(Pair_Name[j],temp);
-}
-
-
-/*   to sort the string array in order          */
-/* ============================================= */
-void ArraySort_String2(int n, char **Pair_Name, int *brr)
-/* ============================================= */
-{
-     int i,ir=n-1,j,k,m=0,jstack=0,b,NSTACK=50,istack[NSTACK];
-     int temp,MIN=7;
-     char p[Max_N_NameBase2];
-
-     for(;;)
-     {
-/*      Insertion sort when subarray is small enough    */
-        if(ir-m<MIN)
-        {
-          for(j=m+1;j<=ir;j++)
-          {
-             strcpy(p,Pair_Name[j]);
-             b=brr[j];
-             for(i=j-1;i>=m;i--)
-             {
-                if(strcmp(Pair_Name[i],p)<=0) break;
-                strcpy(Pair_Name[i+1],Pair_Name[i]);
-                brr[i+1]=brr[i];
-             }
-             strcpy(Pair_Name[i+1],p);
-             brr[i+1]=b;
-          }
-          if(!jstack) return;
-          ir=istack[jstack--];
-          m=istack[jstack--];
-        }
-        else
-        {
-          k=(m+ir)>>1;
-          s_swap2(Pair_Name,k,m+1);
-          SWAP(brr[k],brr[m+1]);
-
-          if(strcmp(Pair_Name[m],Pair_Name[ir])>0)
-          {
-            s_swap2(Pair_Name,m,ir);
-            SWAP(brr[m],brr[ir]);
-          }
-
-          if(strcmp(Pair_Name[m+1],Pair_Name[ir])>0)
-          {
-            s_swap2(Pair_Name,m+1,ir);
-            SWAP(brr[m+1],brr[ir]);
-          }
-
-          if(strcmp(Pair_Name[m],Pair_Name[m+1])>0)
-          {
-            s_swap2(Pair_Name,m,m+1);
-            SWAP(brr[m],brr[m+1]);
-          }
-
-          i=m+1;
-          j=ir;
-          strcpy(p,Pair_Name[m+1]);
-          b=brr[m+1];
-          for(;;)
-          {
-             do i++; while (strcmp(Pair_Name[i],p)<0);
-             do j--; while (strcmp(Pair_Name[j],p)>0);
-             if(j<i) break;
-             s_swap2(Pair_Name,i,j);
-             SWAP(brr[i],brr[j]);
-          }
-          strcpy(Pair_Name[m+1],Pair_Name[j]);
-          strcpy(Pair_Name[j],p);
-          brr[m+1]=brr[j];
-          brr[j]=b;
-          jstack+=2;
-
-/*        Push pointers to larger subarray on stack      */
-/*        process smaller subarray immediately           */
-          if(jstack>NSTACK)
-          {
-             printf("Stack error: NSTACK too small\n");
-             exit(0);
-          }
-          if(ir-i+1>=j-m)
-          {
-            istack[jstack]=ir;
-            istack[jstack-1]=i;
-            ir=j-1;
-          }
-          else
-          {
-            istack[jstack]=j-1;
-            istack[jstack-1]=m;
-            m=i;
-          }
-        }
-     }
-}
-
 
 /* creat an int matrix with subscript ange m[nrl...nrh][ncl...nch]  */
-int     **imatrix(B64_long nrl,B64_long nrh,B64_long ncl,B64_long nch)
+int     **imatrix(long nrl,long nrh,long ncl,long nch)
 {
-        B64_long i, nrow=nrh-nrl+1,ncol=nch-ncl+1;
+        long i, nrow=nrh-nrl+1,ncol=nch-ncl+1;
         int  **m;
 
         /* allocate pointers to rows        */
@@ -1363,9 +899,9 @@ int     **imatrix(B64_long nrl,B64_long nrh,B64_long ncl,B64_long nch)
 }
 
 /* creat char matrix with subscript ange cm[nrl...nrh][ncl...nch]  */
-char    **cmatrix(B64_long nrl,B64_long nrh,B64_long ncl,B64_long nch)
+char    **cmatrix(long nrl,long nrh,long ncl,long nch)
 {
-        B64_long i, nrow=nrh-nrl+1,ncol=nch-ncl+1;
+        long i, nrow=nrh-nrl+1,ncol=nch-ncl+1;
         char **cm;
 
         /* allocate pointers to rows        */
